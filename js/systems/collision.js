@@ -65,10 +65,20 @@ export class CollisionSystem {
     }
     
     checkCollision(world, entityA, entityB) {
+        // Validate entities and components exist before processing
+        if (!entityA || !entityB || !entityA.active || !entityB.active) {
+            return;
+        }
+        
         const posA = entityA.getComponent('position');
         const posB = entityB.getComponent('position');
         const colA = entityA.getComponent('collision');
         const colB = entityB.getComponent('collision');
+        
+        // Check if any components are missing (entity may have been pooled)
+        if (!posA || !posB || !colA || !colB) {
+            return;
+        }
         
         const dx = posA.x - posB.x;
         const dy = posA.y - posB.y;
