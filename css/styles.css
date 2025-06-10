@@ -1,0 +1,151 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    background: #1a1a1a;
+    color: #00ff00;
+    font-family: 'Orbitron', monospace;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+}
+
+#gameContainer {
+    position: relative;
+    border: 2px solid #00ff00;
+    box-shadow: 0 0 20px #00ff00;
+    background: #000;
+}
+
+#gameCanvas {
+    display: block;
+    background: #111;
+}
+
+#ui {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    height: 60px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 1px solid #00ff00;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    font-size: 18px;
+    z-index: 100;
+}
+
+.health-bar {
+    width: 200px;
+    height: 20px;
+    border: 2px solid #00ff00;
+    background: #000;
+    position: relative;
+}
+
+.health-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+    transition: width 0.3s ease;
+}
+
+.ammo-display {
+    display: flex;
+    gap: 5px;
+}
+
+.ammo-bullet {
+    width: 12px;
+    height: 12px;
+    background: #ffff00;
+    border-radius: 50%;
+    box-shadow: 0 0 5px #ffff00;
+}
+
+.ammo-bullet.empty {
+    background: #333;
+    box-shadow: none;
+}
+
+.score-display {
+    text-align: center;
+}
+
+.streak {
+    font-size: 14px;
+    color: #ff6600;
+}
+
+#menuOverlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    z-index: 200;
+    text-align: center;
+}
+
+.menu-title {
+    font-size: 48px;
+    font-weight: 900;
+    margin-bottom: 30px;
+    text-shadow: 0 0 20px #00ff00;
+    color: #00ff00;
+}
+
+.menu-subtitle {
+    font-size: 18px;
+    margin-bottom: 40px;
+    color: #888;
+}
+
+.name-entry {
+    display: flex;
+    gap: 10px;
+    margin: 20px 0;
+    justify-content: center;
+}
+
+.name-char {
+    width: 60px;
+    height: 60px;
+    border: 2px solid #00ff00;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 32px;
+    font-weight: bold;
+    background: #000;
+}
+
+.name-char.active {
+    background: #003300;
+    box-shadow: 0 0 10px #00ff00;
+}
+
+.instructions {
+    font-size: 14px;
+    color: #666;
+    margin-top: 20px;
+    line-height: 1.6;
+}
+
+.hidden {
+    display: none !important;
+}

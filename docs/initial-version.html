@@ -1,0 +1,1003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PONGTANK-II</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            background: #1a1a1a;
+            color: #00ff00;
+            font-family: 'Orbitron', monospace;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        #gameContainer {
+            position: relative;
+            border: 2px solid #00ff00;
+            box-shadow: 0 0 20px #00ff00;
+            background: #000;
+        }
+        
+        #gameCanvas {
+            display: block;
+            background: #111;
+        }
+        
+        #ui {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #00ff00;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            font-size: 18px;
+            z-index: 100;
+        }
+        
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            border: 2px solid #00ff00;
+            background: #000;
+            position: relative;
+        }
+        
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ffff00, #00ff00);
+            transition: width 0.3s ease;
+        }
+        
+        .ammo-display {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .ammo-bullet {
+            width: 12px;
+            height: 12px;
+            background: #ffff00;
+            border-radius: 50%;
+            box-shadow: 0 0 5px #ffff00;
+        }
+        
+        .ammo-bullet.empty {
+            background: #333;
+            box-shadow: none;
+        }
+        
+        .score-display {
+            text-align: center;
+        }
+        
+        .streak {
+            font-size: 14px;
+            color: #ff6600;
+        }
+        
+        #menuOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 200;
+            text-align: center;
+        }
+        
+        .menu-title {
+            font-size: 48px;
+            font-weight: 900;
+            margin-bottom: 30px;
+            text-shadow: 0 0 20px #00ff00;
+            color: #00ff00;
+        }
+        
+        .menu-subtitle {
+            font-size: 18px;
+            margin-bottom: 40px;
+            color: #888;
+        }
+        
+        .name-entry {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+        
+        .name-char {
+            width: 60px;
+            height: 60px;
+            border: 2px solid #00ff00;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            font-weight: bold;
+            background: #000;
+        }
+        
+        .name-char.active {
+            background: #003300;
+            box-shadow: 0 0 10px #00ff00;
+        }
+        
+        .instructions {
+            font-size: 14px;
+            color: #666;
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+        
+        .hidden {
+            display: none !important;
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1024" height="768"></canvas>
+        
+        <div id="ui">
+            <div>
+                <div>HP:</div>
+                <div class="health-bar">
+                    <div class="health-fill" id="healthFill" style="width: 100%"></div>
+                </div>
+            </div>
+            
+            <div class="score-display">
+                <div>SCORE: <span id="scoreValue">0</span></div>
+                <div class="streak">STREAK: x<span id="streakValue">1</span></div>
+            </div>
+            
+            <div>
+                <div>AMMO:</div>
+                <div class="ammo-display" id="ammoDisplay">
+                    <div class="ammo-bullet"></div>
+                    <div class="ammo-bullet"></div>
+                    <div class="ammo-bullet"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="menuOverlay">
+            <div class="menu-title">PONGTANK-II</div>
+            <div class="menu-subtitle">Enter Your Initials</div>
+            
+            <div class="name-entry">
+                <div class="name-char active" id="char0">A</div>
+                <div class="name-char" id="char1">A</div>
+                <div class="name-char" id="char2">A</div>
+            </div>
+            
+            <div class="instructions">
+                Use ARROW KEYS to change letters<br>
+                Press ENTER to start game<br><br>
+                Controls: WASD to move, Mouse to aim, Left Click to shoot<br>
+                Projectiles bounce up to 5 times!
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game constants
+        const CANVAS_WIDTH = 1024;
+        const CANVAS_HEIGHT = 768;
+        const FIXED_TIMESTEP = 16.67; // 60 FPS
+        const TILE_SIZE = 32;
+        const MAZE_WIDTH = Math.floor(CANVAS_WIDTH / TILE_SIZE);
+        const MAZE_HEIGHT = Math.floor(CANVAS_HEIGHT / TILE_SIZE);
+
+        // Game canvas and context
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // UI elements
+        const healthFill = document.getElementById('healthFill');
+        const scoreValue = document.getElementById('scoreValue');
+        const streakValue = document.getElementById('streakValue');
+        const ammoDisplay = document.getElementById('ammoDisplay');
+        const menuOverlay = document.getElementById('menuOverlay');
+
+        // Game state
+        let gameState = 'menu';
+        let playerName = ['A', 'A', 'A'];
+        let nameIndex = 0;
+        let lastTime = 0;
+        let accumulator = 0;
+
+        // Entity Component System
+        class Entity {
+            constructor() {
+                this.id = Math.random().toString(36).substr(2, 9);
+                this.components = new Map();
+                this.active = true;
+            }
+            
+            addComponent(type, data) {
+                this.components.set(type, data);
+                return this;
+            }
+            
+            getComponent(type) {
+                return this.components.get(type);
+            }
+            
+            hasComponent(type) {
+                return this.components.has(type);
+            }
+            
+            removeComponent(type) {
+                this.components.delete(type);
+            }
+        }
+
+        // Components
+        const Position = (x, y, rotation = 0) => ({ x, y, rotation });
+        const Velocity = (vx, vy, angular = 0) => ({ vx, vy, angular });
+        const Collision = (radius, type) => ({ radius, type });
+        const Health = (current, max) => ({ current, max });
+        const Weapon = (ammo, maxAmmo, cooldown) => ({ ammo, maxAmmo, cooldown, lastFired: 0 });
+        const Projectile = (bounces = 0, maxBounces = 5) => ({ bounces, maxBounces });
+        const AI = (state, target, lastSeen, fireRate) => ({ state, target, lastSeen, fireRate, lastFired: 0 });
+        const Powerup = (type, value, duration = 0) => ({ type, value, duration });
+        const Player = () => ({ turretRotation: 0 });
+        const Enemy = () => ({});
+        const Wall = () => ({});
+        const Brick = () => ({});
+
+        // Game world
+        class World {
+            constructor() {
+                this.entities = [];
+                this.systems = [];
+                this.maze = [];
+                this.score = 0;
+                this.streak = 1;
+                this.lastScoreTime = 0;
+                this.player = null;
+                this.powerupSpawnTimer = 0;
+                this.enemySpawnTimer = 0;
+                
+                this.initializeMaze();
+                this.createPlayer();
+                this.spawnEnemies();
+            }
+            
+            addEntity(entity) {
+                this.entities.push(entity);
+                return entity;
+            }
+            
+            removeEntity(entityId) {
+                this.entities = this.entities.filter(e => e.id !== entityId);
+            }
+            
+            getEntitiesWith(...components) {
+                return this.entities.filter(entity => 
+                    components.every(comp => entity.hasComponent(comp))
+                );
+            }
+            
+            initializeMaze() {
+                // Create simple maze with walls around edges and some internal structure
+                this.maze = Array(MAZE_HEIGHT).fill().map(() => Array(MAZE_WIDTH).fill(0));
+                
+                // Walls around edges
+                for (let y = 0; y < MAZE_HEIGHT; y++) {
+                    for (let x = 0; x < MAZE_WIDTH; x++) {
+                        if (x === 0 || x === MAZE_WIDTH - 1 || y === 0 || y === MAZE_HEIGHT - 1) {
+                            this.maze[y][x] = 1; // Wall
+                            this.createWall(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
+                        }
+                    }
+                }
+                
+                // Add some internal walls and destructible bricks
+                for (let y = 2; y < MAZE_HEIGHT - 2; y++) {
+                    for (let x = 2; x < MAZE_WIDTH - 2; x++) {
+                        if (Math.random() < 0.1) {
+                            this.maze[y][x] = 1;
+                            this.createWall(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
+                        } else if (Math.random() < 0.05) {
+                            this.maze[y][x] = 2; // Destructible brick
+                            this.createBrick(x * TILE_SIZE + TILE_SIZE/2, y * TILE_SIZE + TILE_SIZE/2);
+                        }
+                    }
+                }
+            }
+            
+            createWall(x, y) {
+                return this.addEntity(new Entity()
+                    .addComponent('position', Position(x, y))
+                    .addComponent('collision', Collision(TILE_SIZE/2, 'wall'))
+                    .addComponent('wall', Wall()));
+            }
+            
+            createBrick(x, y) {
+                return this.addEntity(new Entity()
+                    .addComponent('position', Position(x, y))
+                    .addComponent('collision', Collision(TILE_SIZE/2, 'brick'))
+                    .addComponent('brick', Brick()));
+            }
+            
+            createPlayer() {
+                this.player = this.addEntity(new Entity()
+                    .addComponent('position', Position(CANVAS_WIDTH/2, CANVAS_HEIGHT/2))
+                    .addComponent('velocity', Velocity(0, 0))
+                    .addComponent('collision', Collision(15, 'player'))
+                    .addComponent('health', Health(100, 100))
+                    .addComponent('weapon', Weapon(3, 3, 500))
+                    .addComponent('player', Player()));
+            }
+            
+            spawnEnemies() {
+                for (let i = 0; i < 3; i++) {
+                    let x, y;
+                    do {
+                        x = Math.random() * (CANVAS_WIDTH - 100) + 50;
+                        y = Math.random() * (CANVAS_HEIGHT - 100) + 50;
+                    } while (this.getDistance(x, y, CANVAS_WIDTH/2, CANVAS_HEIGHT/2) < 150);
+                    
+                    this.addEntity(new Entity()
+                        .addComponent('position', Position(x, y))
+                        .addComponent('velocity', Velocity(0, 0))
+                        .addComponent('collision', Collision(15, 'enemy'))
+                        .addComponent('health', Health(50, 50))
+                        .addComponent('weapon', Weapon(1, 1, 2000))
+                        .addComponent('ai', AI('patrol', null, null, 2000))
+                        .addComponent('enemy', Enemy()));
+                }
+            }
+            
+            spawnPowerup(x, y) {
+                const type = Math.random() < 0.5 ? 'health' : 'ammo';
+                const value = type === 'health' ? 50 : 3;
+                const duration = type === 'ammo' ? 30000 : 0;
+                
+                this.addEntity(new Entity()
+                    .addComponent('position', Position(x, y))
+                    .addComponent('collision', Collision(12, 'powerup'))
+                    .addComponent('powerup', Powerup(type, value, duration)));
+            }
+            
+            getDistance(x1, y1, x2, y2) {
+                return Math.sqrt((x2 - x1) ** 2 + (y2 - y1) ** 2);
+            }
+            
+            addScore(points) {
+                const now = Date.now();
+                if (now - this.lastScoreTime < 3000) {
+                    this.streak = Math.min(this.streak + 0.5, 5);
+                } else {
+                    this.streak = 1;
+                }
+                
+                this.score += Math.floor(points * this.streak);
+                this.lastScoreTime = now;
+                this.updateUI();
+            }
+            
+            resetStreak() {
+                this.streak = 1;
+                this.updateUI();
+            }
+            
+            updateUI() {
+                if (this.player) {
+                    const health = this.player.getComponent('health');
+                    const weapon = this.player.getComponent('weapon');
+                    
+                    healthFill.style.width = `${(health.current / health.max) * 100}%`;
+                    scoreValue.textContent = this.score;
+                    streakValue.textContent = this.streak.toFixed(1);
+                    
+                    // Update ammo display
+                    const bullets = ammoDisplay.children;
+                    for (let i = 0; i < bullets.length; i++) {
+                        bullets[i].className = i < weapon.ammo ? 'ammo-bullet' : 'ammo-bullet empty';
+                    }
+                }
+            }
+        }
+
+        // Input handling
+        class InputManager {
+            constructor() {
+                this.keys = {};
+                this.mouse = { x: 0, y: 0, buttons: {} };
+                this.setupEventListeners();
+            }
+            
+            setupEventListeners() {
+                document.addEventListener('keydown', (e) => {
+                    this.keys[e.code] = true;
+                    if (gameState === 'menu') {
+                        this.handleMenuInput(e.code);
+                    }
+                });
+                
+                document.addEventListener('keyup', (e) => {
+                    this.keys[e.code] = false;
+                });
+                
+                canvas.addEventListener('mousemove', (e) => {
+                    const rect = canvas.getBoundingClientRect();
+                    this.mouse.x = e.clientX - rect.left;
+                    this.mouse.y = e.clientY - rect.top;
+                });
+                
+                canvas.addEventListener('mousedown', (e) => {
+                    this.mouse.buttons[e.button] = true;
+                });
+                
+                canvas.addEventListener('mouseup', (e) => {
+                    this.mouse.buttons[e.button] = false;
+                });
+            }
+            
+            handleMenuInput(code) {
+                if (code === 'ArrowLeft') {
+                    nameIndex = Math.max(0, nameIndex - 1);
+                } else if (code === 'ArrowRight') {
+                    nameIndex = Math.min(2, nameIndex + 1);
+                } else if (code === 'ArrowUp') {
+                    const char = playerName[nameIndex];
+                    playerName[nameIndex] = String.fromCharCode(((char.charCodeAt(0) - 65 + 1) % 26) + 65);
+                } else if (code === 'ArrowDown') {
+                    const char = playerName[nameIndex];
+                    playerName[nameIndex] = String.fromCharCode(((char.charCodeAt(0) - 65 + 25) % 26) + 65);
+                } else if (code === 'Enter') {
+                    gameState = 'playing';
+                    menuOverlay.classList.add('hidden');
+                }
+                
+                this.updateNameDisplay();
+            }
+            
+            updateNameDisplay() {
+                for (let i = 0; i < 3; i++) {
+                    const charElement = document.getElementById(`char${i}`);
+                    charElement.textContent = playerName[i];
+                    charElement.className = i === nameIndex ? 'name-char active' : 'name-char';
+                }
+            }
+        }
+
+        // Game systems
+        class MovementSystem {
+            update(world, deltaTime) {
+                const entities = world.getEntitiesWith('position', 'velocity');
+                
+                entities.forEach(entity => {
+                    const pos = entity.getComponent('position');
+                    const vel = entity.getComponent('velocity');
+                    
+                    // Apply movement
+                    pos.x += vel.vx * deltaTime / 1000;
+                    pos.y += vel.vy * deltaTime / 1000;
+                    pos.rotation += vel.angular * deltaTime / 1000;
+                    
+                    // Apply friction
+                    vel.vx *= 0.95;
+                    vel.vy *= 0.95;
+                    vel.angular *= 0.95;
+                    
+                    // Keep in bounds
+                    pos.x = Math.max(20, Math.min(CANVAS_WIDTH - 20, pos.x));
+                    pos.y = Math.max(20, Math.min(CANVAS_HEIGHT - 20, pos.y));
+                });
+            }
+        }
+
+        class InputSystem {
+            constructor(inputManager) {
+                this.input = inputManager;
+            }
+            
+            update(world, deltaTime) {
+                if (gameState !== 'playing') return;
+                
+                const player = world.player;
+                if (!player) return;
+                
+                const pos = player.getComponent('position');
+                const vel = player.getComponent('velocity');
+                const weapon = player.getComponent('weapon');
+                const playerComp = player.getComponent('player');
+                
+                // Tank movement
+                const MOVE_FORCE = 300;
+                const TURN_FORCE = 180;
+                
+                if (this.input.keys['KeyW']) {
+                    vel.vx += Math.cos(pos.rotation) * MOVE_FORCE * deltaTime / 1000;
+                    vel.vy += Math.sin(pos.rotation) * MOVE_FORCE * deltaTime / 1000;
+                }
+                if (this.input.keys['KeyS']) {
+                    vel.vx -= Math.cos(pos.rotation) * MOVE_FORCE * deltaTime / 1000;
+                    vel.vy -= Math.sin(pos.rotation) * MOVE_FORCE * deltaTime / 1000;
+                }
+                if (this.input.keys['KeyA']) {
+                    vel.angular -= TURN_FORCE * deltaTime / 1000;
+                }
+                if (this.input.keys['KeyD']) {
+                    vel.angular += TURN_FORCE * deltaTime / 1000;
+                }
+                
+                // Turret rotation
+                playerComp.turretRotation = Math.atan2(
+                    this.input.mouse.y - pos.y,
+                    this.input.mouse.x - pos.x
+                );
+                
+                // Shooting
+                if (this.input.mouse.buttons[0] && weapon.ammo > 0) {
+                    const now = Date.now();
+                    if (now - weapon.lastFired > weapon.cooldown) {
+                        this.fireProjectile(world, player, playerComp.turretRotation);
+                        weapon.ammo--;
+                        weapon.lastFired = now;
+                        world.updateUI();
+                    }
+                }
+            }
+            
+            fireProjectile(world, shooter, angle) {
+                const pos = shooter.getComponent('position');
+                const speed = 400;
+                const projX = pos.x + Math.cos(angle) * 20;
+                const projY = pos.y + Math.sin(angle) * 20;
+                const isPlayer = shooter.hasComponent('player');
+                
+                const projectile = world.addEntity(new Entity()
+                    .addComponent('position', Position(projX, projY))
+                    .addComponent('velocity', Velocity(
+                        Math.cos(angle) * speed,
+                        Math.sin(angle) * speed
+                    ))
+                    .addComponent('collision', Collision(4, isPlayer ? 'playerProjectile' : 'enemyProjectile'))
+                    .addComponent('projectile', Projectile()));
+                
+                if (isPlayer) {
+                    projectile.addComponent('playerProjectile', {});
+                }
+            }
+        }
+
+        class CollisionSystem {
+            update(world, deltaTime) {
+                const entities = world.getEntitiesWith('position', 'collision');
+                
+                for (let i = 0; i < entities.length; i++) {
+                    for (let j = i + 1; j < entities.length; j++) {
+                        this.checkCollision(world, entities[i], entities[j]);
+                    }
+                }
+                
+                // Check projectile bounds and apply bouncing
+                const projectiles = world.getEntitiesWith('projectile');
+                projectiles.forEach(proj => {
+                    const pos = proj.getComponent('position');
+                    const vel = proj.getComponent('velocity');
+                    const projComp = proj.getComponent('projectile');
+                    
+                    let bounced = false;
+                    
+                    if (pos.x <= 0 || pos.x >= CANVAS_WIDTH) {
+                        vel.vx *= -0.9;
+                        bounced = true;
+                    }
+                    
+                    if (pos.y <= 0 || pos.y >= CANVAS_HEIGHT) {
+                        vel.vy *= -0.9;
+                        bounced = true;
+                    }
+                    
+                    if (bounced) {
+                        projComp.bounces++;
+                        if (projComp.bounces >= projComp.maxBounces) {
+                            world.removeEntity(proj.id);
+                            this.checkAmmoRegeneration(world);
+                        }
+                    }
+                });
+            }
+            
+            checkCollision(world, entityA, entityB) {
+                const posA = entityA.getComponent('position');
+                const posB = entityB.getComponent('position');
+                const colA = entityA.getComponent('collision');
+                const colB = entityB.getComponent('collision');
+                
+                const dx = posA.x - posB.x;
+                const dy = posA.y - posB.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < colA.radius + colB.radius) {
+                    this.handleCollision(world, entityA, entityB);
+                }
+            }
+            
+            handleCollision(world, entityA, entityB) {
+                const typeA = entityA.getComponent('collision').type;
+                const typeB = entityB.getComponent('collision').type;
+                
+                // Projectile collisions
+                if (typeA.includes('Projectile') || typeB.includes('Projectile')) {
+                    const projectile = typeA.includes('Projectile') ? entityA : entityB;
+                    const target = typeA.includes('Projectile') ? entityB : entityA;
+                    const targetType = target.getComponent('collision').type;
+                    
+                    if (targetType === 'wall') {
+                        this.bounceProjectile(projectile, target);
+                    } else if (targetType === 'brick') {
+                        world.removeEntity(target.id);
+                        world.removeEntity(projectile.id);
+                        world.addScore(10);
+                        
+                        // Chance to spawn powerup
+                        if (Math.random() < 0.3) {
+                            const pos = target.getComponent('position');
+                            world.spawnPowerup(pos.x, pos.y);
+                        }
+                        
+                        this.checkAmmoRegeneration(world);
+                    } else if (targetType === 'player' && projectile.getComponent('collision').type === 'enemyProjectile') {
+                        this.damageEntity(world, target, 20);
+                        world.removeEntity(projectile.id);
+                        world.resetStreak();
+                        this.checkAmmoRegeneration(world);
+                    } else if (targetType === 'enemy' && projectile.getComponent('collision').type === 'playerProjectile') {
+                        this.damageEntity(world, target, 25);
+                        world.removeEntity(projectile.id);
+                        world.addScore(50);
+                        this.checkAmmoRegeneration(world);
+                    }
+                }
+                
+                // Powerup collection
+                if ((typeA === 'player' && typeB === 'powerup') || (typeA === 'powerup' && typeB === 'player')) {
+                    const player = typeA === 'player' ? entityA : entityB;
+                    const powerup = typeA === 'powerup' ? entityA : entityB;
+                    
+                    this.collectPowerup(world, player, powerup);
+                    world.removeEntity(powerup.id);
+                }
+            }
+            
+            bounceProjectile(projectile, wall) {
+                const projComp = projectile.getComponent('projectile');
+                const vel = projectile.getComponent('velocity');
+                
+                projComp.bounces++;
+                
+                if (projComp.bounces >= projComp.maxBounces) {
+                    world.removeEntity(projectile.id);
+                    this.checkAmmoRegeneration(world);
+                    return;
+                }
+                
+                // Simple bounce (reverse velocity)
+                const pos = projectile.getComponent('position');
+                const wallPos = wall.getComponent('position');
+                
+                if (Math.abs(pos.x - wallPos.x) > Math.abs(pos.y - wallPos.y)) {
+                    vel.vx *= -0.9;
+                } else {
+                    vel.vy *= -0.9;
+                }
+            }
+            
+            damageEntity(world, entity, damage) {
+                const health = entity.getComponent('health');
+                health.current = Math.max(0, health.current - damage);
+                
+                if (health.current <= 0) {
+                    if (entity.hasComponent('player')) {
+                        gameState = 'gameOver';
+                        // Show game over screen
+                        menuOverlay.classList.remove('hidden');
+                        menuOverlay.innerHTML = `
+                            <div class="menu-title">GAME OVER</div>
+                            <div class="menu-subtitle">Final Score: ${world.score}</div>
+                            <div class="instructions">Press F5 to restart</div>
+                        `;
+                    } else {
+                        world.removeEntity(entity.id);
+                        world.addScore(100);
+                    }
+                }
+                
+                world.updateUI();
+            }
+            
+            collectPowerup(world, player, powerup) {
+                const powerupComp = powerup.getComponent('powerup');
+                
+                if (powerupComp.type === 'health') {
+                    const health = player.getComponent('health');
+                    health.current = Math.min(health.max, health.current + powerupComp.value);
+                } else if (powerupComp.type === 'ammo') {
+                    const weapon = player.getComponent('weapon');
+                    weapon.maxAmmo = 6; // Double ammo
+                    weapon.ammo = weapon.maxAmmo;
+                    
+                    // Set timer to reset after duration
+                    setTimeout(() => {
+                        weapon.maxAmmo = 3;
+                        weapon.ammo = Math.min(weapon.ammo, weapon.maxAmmo);
+                        world.updateUI();
+                    }, powerupComp.duration);
+                }
+                
+                world.updateUI();
+            }
+            
+            checkAmmoRegeneration(world) {
+                // Check if all projectiles are gone and regenerate ammo
+                const projectiles = world.getEntitiesWith('playerProjectile');
+                if (projectiles.length === 0 && world.player) {
+                    const weapon = world.player.getComponent('weapon');
+                    weapon.ammo = weapon.maxAmmo;
+                    world.updateUI();
+                }
+            }
+        }
+
+        class AISystem {
+            update(world, deltaTime) {
+                const enemies = world.getEntitiesWith('ai', 'position');
+                
+                enemies.forEach(enemy => {
+                    const ai = enemy.getComponent('ai');
+                    const pos = enemy.getComponent('position');
+                    const vel = enemy.getComponent('velocity');
+                    const weapon = enemy.getComponent('weapon');
+                    
+                    // Simple AI: move randomly and shoot at player
+                    if (Math.random() < 0.02) {
+                        const angle = Math.random() * Math.PI * 2;
+                        vel.vx += Math.cos(angle) * 50;
+                        vel.vy += Math.sin(angle) * 50;
+                    }
+                    
+                    // Shoot at player
+                    if (world.player) {
+                        const playerPos = world.player.getComponent('position');
+                        const now = Date.now();
+                        
+                        if (now - ai.lastFired > ai.fireRate && weapon.ammo > 0) {
+                            const angle = Math.atan2(playerPos.y - pos.y, playerPos.x - pos.x);
+                            this.fireProjectile(world, enemy, angle);
+                            weapon.ammo--;
+                            ai.lastFired = now;
+                        }
+                    }
+                    
+                    // Regenerate ammo
+                    if (weapon.ammo <= 0) {
+                        weapon.ammo = 1;
+                    }
+                });
+            }
+            
+            fireProjectile(world, shooter, angle) {
+                const pos = shooter.getComponent('position');
+                const speed = 300; // Slower than player
+                const projX = pos.x + Math.cos(angle) * 20;
+                const projY = pos.y + Math.sin(angle) * 20;
+                
+                world.addEntity(new Entity()
+                    .addComponent('position', Position(projX, projY))
+                    .addComponent('velocity', Velocity(
+                        Math.cos(angle) * speed,
+                        Math.sin(angle) * speed
+                    ))
+                    .addComponent('collision', Collision(4, 'enemyProjectile'))
+                    .addComponent('projectile', Projectile()));
+            }
+        }
+
+        class RenderSystem {
+            update(world, deltaTime) {
+                // Clear canvas
+                ctx.fillStyle = '#111111';
+                ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+                
+                // Draw maze floor pattern
+                ctx.fillStyle = '#222222';
+                for (let y = 0; y < MAZE_HEIGHT; y++) {
+                    for (let x = 0; x < MAZE_WIDTH; x++) {
+                        if ((x + y) % 2 === 0) {
+                            ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE);
+                        }
+                    }
+                }
+                
+                // Draw walls
+                const walls = world.getEntitiesWith('wall', 'position');
+                ctx.fillStyle = '#444444';
+                walls.forEach(wall => {
+                    const pos = wall.getComponent('position');
+                    ctx.fillRect(pos.x - 16, pos.y - 16, 32, 32);
+                });
+                
+                // Draw bricks
+                const bricks = world.getEntitiesWith('brick', 'position');
+                ctx.fillStyle = '#8B4513';
+                bricks.forEach(brick => {
+                    const pos = brick.getComponent('position');
+                    ctx.fillRect(pos.x - 16, pos.y - 16, 32, 32);
+                    ctx.strokeStyle = '#CD853F';
+                    ctx.strokeRect(pos.x - 16, pos.y - 16, 32, 32);
+                });
+                
+                // Draw powerups
+                const powerups = world.getEntitiesWith('powerup', 'position');
+                powerups.forEach(powerup => {
+                    const pos = powerup.getComponent('position');
+                    const comp = powerup.getComponent('powerup');
+                    
+                    ctx.fillStyle = comp.type === 'health' ? '#00FF00' : '#FF0000';
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 12, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(comp.type === 'health' ? '+' : 'A', pos.x, pos.y + 4);
+                });
+                
+                // Draw player
+                if (world.player) {
+                    this.drawTank(world.player, '#00AA00');
+                }
+                
+                // Draw enemies
+                const enemies = world.getEntitiesWith('enemy', 'position');
+                enemies.forEach(enemy => {
+                    this.drawTank(enemy, '#AA0000');
+                });
+                
+                // Draw projectiles
+                const projectiles = world.getEntitiesWith('projectile', 'position');
+                projectiles.forEach(proj => {
+                    const pos = proj.getComponent('position');
+                    const isPlayer = proj.hasComponent('playerProjectile');
+                    
+                    ctx.fillStyle = isPlayer ? '#FFFF00' : '#FF4444';
+                    ctx.beginPath();
+                    ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Add glow effect
+                    ctx.shadowColor = isPlayer ? '#FFFF00' : '#FF4444';
+                    ctx.shadowBlur = 10;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                });
+            }
+            
+            drawTank(tank, color) {
+                const pos = tank.getComponent('position');
+                const health = tank.getComponent('health');
+                
+                ctx.save();
+                ctx.translate(pos.x, pos.y);
+                
+                // Draw tank body
+                ctx.rotate(pos.rotation);
+                ctx.fillStyle = color;
+                ctx.fillRect(-15, -10, 30, 20);
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.strokeRect(-15, -10, 30, 20);
+                
+                ctx.restore();
+                
+                // Draw turret
+                ctx.save();
+                ctx.translate(pos.x, pos.y);
+                
+                if (tank.hasComponent('player')) {
+                    const player = tank.getComponent('player');
+                    ctx.rotate(player.turretRotation);
+                } else {
+                    ctx.rotate(pos.rotation);
+                }
+                
+                ctx.fillStyle = color;
+                ctx.fillRect(0, -3, 20, 6);
+                ctx.strokeStyle = '#FFFFFF';
+                ctx.strokeRect(0, -3, 20, 6);
+                
+                ctx.restore();
+                
+                // Draw health bar
+                if (health.current < health.max) {
+                    const barWidth = 30;
+                    const barHeight = 4;
+                    
+                    ctx.fillStyle = '#FF0000';
+                    ctx.fillRect(pos.x - barWidth/2, pos.y - 25, barWidth, barHeight);
+                    
+                    ctx.fillStyle = '#00FF00';
+                    const healthPercent = health.current / health.max;
+                    ctx.fillRect(pos.x - barWidth/2, pos.y - 25, barWidth * healthPercent, barHeight);
+                }
+            }
+        }
+
+        // Game initialization
+        let world = null;
+        let inputManager = null;
+        let systems = [];
+
+        function initGame() {
+            world = new World();
+            inputManager = new InputManager();
+            
+            systems = [
+                new InputSystem(inputManager),
+                new MovementSystem(),
+                new CollisionSystem(),
+                new AISystem(),
+                new RenderSystem()
+            ];
+            
+            world.updateUI();
+        }
+
+        function gameLoop(currentTime) {
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            accumulator += deltaTime;
+            
+            while (accumulator >= FIXED_TIMESTEP) {
+                if (gameState === 'playing' && world) {
+                    systems.forEach(system => system.update(world, FIXED_TIMESTEP));
+                }
+                accumulator -= FIXED_TIMESTEP;
+            }
+            
+            if (gameState === 'playing' && world) {
+                // Render with interpolation
+                const renderSystem = systems.find(s => s instanceof RenderSystem);
+                renderSystem.update(world, FIXED_TIMESTEP);
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Start the game
+        initGame();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

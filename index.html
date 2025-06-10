@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PONGTANK-II v1.0.0</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="gameContainer">
+        <canvas id="gameCanvas" width="1024" height="768"></canvas>
+        
+        <div id="ui">
+            <div>
+                <div>HP:</div>
+                <div class="health-bar">
+                    <div class="health-fill" id="healthFill" style="width: 100%"></div>
+                </div>
+            </div>
+            
+            <div class="score-display">
+                <div>SCORE: <span id="scoreValue">0</span></div>
+                <div class="streak">STREAK: x<span id="streakValue">1</span></div>
+            </div>
+            
+            <div>
+                <div>AMMO:</div>
+                <div class="ammo-display" id="ammoDisplay">
+                    <div class="ammo-bullet"></div>
+                    <div class="ammo-bullet"></div>
+                    <div class="ammo-bullet"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="menuOverlay">
+            <div class="menu-title">PONGTANK-II</div>
+            <div class="menu-subtitle">Enter Your Initials</div>
+            
+            <div class="name-entry">
+                <div class="name-char active" id="char0">A</div>
+                <div class="name-char" id="char1">A</div>
+                <div class="name-char" id="char2">A</div>
+            </div>
+            
+            <div class="instructions">
+                Use ARROW KEYS to change letters<br>
+                Press ENTER to start game<br><br>
+                Controls: WASD to move, Mouse to aim, Left Click to shoot<br>
+                Projectiles bounce up to 5 times and expire after 6 seconds!<br><br>
+                <strong>v1.0.0 Features:</strong><br>
+                • Enhanced tank controls with realistic turning<br>
+                • Sector-based maze generation with biomes<br>
+                • Advanced AI with patrol/chase/attack states<br>
+                • Object pooling for optimal performance<br>
+                • Projectile time-to-live with visual warnings
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
