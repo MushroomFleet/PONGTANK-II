@@ -24,6 +24,12 @@ export class World {
         this.powerupSpawnTimer = 0;
         this.enemySpawnTimer = 0;
         
+        // Wave management
+        this.currentWave = 1;
+        this.waveDelay = 4000; // 4 seconds between waves
+        this.lastWaveTime = 0;
+        this.isWaveActive = false;
+        
         // Initialize object pools
         this.poolManager = new PoolManager();
         this.initializePools();
@@ -32,6 +38,7 @@ export class World {
         this.generateMaze();
         this.createPlayer();
         this.spawnEnemies();
+        this.isWaveActive = true;
     }
     
     initializePools() {
@@ -158,7 +165,7 @@ export class World {
             .addComponent('position', Position(playerX, playerY))
             .addComponent('velocity', Velocity(0, 0))
             .addComponent('collision', Collision(15, 'player'))
-            .addComponent('health', Health(100, 100))
+            .addComponent('health', Health(1000, 1000))
             .addComponent('weapon', Weapon(3, 3, 500))
             .addComponent('player', Player()));
     }
@@ -258,6 +265,130 @@ export class World {
     
     getPoolStats() {
         return this.poolManager.getStats();
+    }
+    
+    checkWaveComplete() {
+        const enemies = this.getEntitiesWith('enemy');
+        return enemies.length === 0;
+    }
+    
+    updateWaveSystem() {
+        if (this.isWaveActive && this.checkWaveComplete()) {
+            // Wave completed
+            this.isWaveActive = false;
+            this.lastWaveTime = Date.now();
+            console.log(`Wave ${this.currentWave} completed!`);
+        }
+        
+        if (!this.isWaveActive && Date.now() - this.lastWaveTime > this.waveDelay) {
+            // Start new wave
+            this.currentWave++;
+            this.spawnNewWave();
+            this.isWaveActive = true;
+            console.log(`Starting Wave ${this.currentWave}`);
+        }
+    }
+    
+    spawnNewWave() {
+        // Calculate number of enemies based on wave
+        const baseEnemies = 3;
+        const numEnemies = baseEnemies + Math.floor(this.currentWave / 2);
+        
+        // Get edge-preferential spawn positions
+        const spawnPositions = this.getEdgeSpawnPositions(numEnemies);
+        
+        for (let i = 0; i < Math.min(numEnemies, spawnPositions.length); i++) {
+            const pos = spawnPositions[i];
+            
+            const enemy = this.poolManager.acquire('enemies');
+            enemy.addComponent('position', Position(pos.x, pos.y))
+                 .addComponent('velocity', Velocity(0, 0))
+                 .addComponent('collision', Collision(15, 'enemy'))
+                 .addComponent('health', Health(50, 50))
+                 .addComponent('weapon', Weapon(1, 1, 2000))
+                 .addComponent('ai', { 
+                     state: 'patrol', 
+                     target: null, 
+                     lastSeen: null, 
+                     fireRate: 2000,
+                     lastFired: 0,
+                     patrolTarget: null,
+                     stateTimer: 0,
+                     lastKnownPlayerPosition: null,
+                     lastPositionUpdate: null
+                 })
+                 .addComponent('enemy', Enemy());
+            
+            this.addEntity(enemy);
+        }
+    }
+    
+    getEdgeSpawnPositions(count) {
+        const edgePositions = [];
+        const margin = TILE_SIZE * 2; // Stay 2 tiles away from edge
+        const centerX = CANVAS_WIDTH / 2;
+        const centerY = CANVAS_HEIGHT / 2;
+        const minDistanceFromCenter = 200; // Minimum distance from center
+        
+        // Generate potential spawn positions near edges
+        for (let attempts = 0; attempts < count * 20 && edgePositions.length < count; attempts++) {
+            let x, y;
+            
+            // Choose which edge to spawn near (0=top, 1=right, 2=bottom, 3=left)
+            const edge = Math.floor(Math.random() * 4);
+            
+            switch (edge) {
+                case 0: // Top edge
+                    x = margin + Math.random() * (CANVAS_WIDTH - 2 * margin);
+                    y = margin + Math.random() * 100;
+                    break;
+                case 1: // Right edge
+                    x = CANVAS_WIDTH - margin - Math.random() * 100;
+                    y = margin + Math.random() * (CANVAS_HEIGHT - 2 * margin);
+                    break;
+                case 2: // Bottom edge
+                    x = margin + Math.random() * (CANVAS_WIDTH - 2 * margin);
+                    y = CANVAS_HEIGHT - margin - Math.random() * 100;
+                    break;
+                case 3: // Left edge
+                    x = margin + Math.random() * 100;
+                    y = margin + Math.random() * (CANVAS_HEIGHT - 2 * margin);
+                    break;
+            }
+            
+            // Check distance from center
+            const distanceFromCenter = this.getDistance(x, y, centerX, centerY);
+            if (distanceFromCenter < minDistanceFromCenter) continue;
+            
+            // Check if position is clear (not in wall)
+            const tileX = Math.floor(x / TILE_SIZE);
+            const tileY = Math.floor(y / TILE_SIZE);
+            
+            if (tileX >= 0 && tileX < MAZE_WIDTH && tileY >= 0 && tileY < MAZE_HEIGHT) {
+                if (this.maze[tileY] && this.maze[tileY][tileX] === 0) {
+                    // Check minimum distance from player
+                    if (this.player) {
+                        const playerPos = this.player.getComponent('position');
+                        const distanceFromPlayer = this.getDistance(x, y, playerPos.x, playerPos.y);
+                        if (distanceFromPlayer > 150) {
+                            edgePositions.push({ x, y });
+                        }
+                    } else {
+                        edgePositions.push({ x, y });
+                    }
+                }
+            }
+        }
+        
+        // Fallback to regular spawn positions if not enough edge positions found
+        if (edgePositions.length < count) {
+            const fallbackPositions = this.mazeGenerator.findSpawnPositions(count - edgePositions.length + 1);
+            for (let i = 1; i < fallbackPositions.length && edgePositions.length < count; i++) {
+                edgePositions.push(fallbackPositions[i]);
+            }
+        }
+        
+        return edgePositions;
     }
 }
 

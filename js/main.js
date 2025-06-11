@@ -129,6 +129,9 @@ function gameLoop(currentTime) {
     // Fixed timestep updates
     while (accumulator >= FIXED_TIMESTEP) {
         if (gameState === 'playing' && world) {
+            // Update wave system
+            world.updateWaveSystem();
+            
             // Update all systems
             systems.forEach(system => {
                 if (system.update) {

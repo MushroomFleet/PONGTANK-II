@@ -28,6 +28,14 @@ export class AISystem {
         const playerPos = player.getComponent('position');
         const distanceToPlayer = world.getDistance(pos.x, pos.y, playerPos.x, playerPos.y);
         
+        // Track last known player position (update every 1000ms)
+        if (!ai.lastKnownPlayerPosition || !ai.lastPositionUpdate || Date.now() - ai.lastPositionUpdate > 1000) {
+            if (this.hasLineOfSight(world, enemy, player)) {
+                ai.lastKnownPlayerPosition = { x: playerPos.x, y: playerPos.y };
+                ai.lastPositionUpdate = Date.now();
+            }
+        }
+        
         // State machine logic
         switch (ai.state) {
             case 'patrol':
@@ -124,19 +132,24 @@ export class AISystem {
         const pos = enemy.getComponent('position');
         const vel = enemy.getComponent('velocity');
         const weapon = enemy.getComponent('weapon');
-        const playerPos = player.getComponent('position');
         
         // Stop moving and aim
         vel.vx *= 0.8;
         vel.vy *= 0.8;
         
-        // Calculate aim angle with some prediction
-        const playerVel = player.getComponent('velocity');
-        const predictTime = 0.5; // Predict 0.5 seconds ahead
-        const predictedX = playerPos.x + playerVel.vx * predictTime;
-        const predictedY = playerPos.y + playerVel.vy * predictTime;
+        // Use last known player position instead of real-time position
+        let targetX, targetY;
+        if (ai.lastKnownPlayerPosition) {
+            targetX = ai.lastKnownPlayerPosition.x;
+            targetY = ai.lastKnownPlayerPosition.y;
+        } else {
+            // Fallback to current position if no last known position
+            const playerPos = player.getComponent('position');
+            targetX = playerPos.x;
+            targetY = playerPos.y;
+        }
         
-        const aimAngle = Math.atan2(predictedY - pos.y, predictedX - pos.x);
+        const aimAngle = Math.atan2(targetY - pos.y, targetX - pos.x);
         
         // Face target
         pos.rotation = aimAngle;
@@ -190,7 +203,7 @@ export class AISystem {
     
     fireProjectile(world, shooter, angle) {
         const pos = shooter.getComponent('position');
-        const speed = 300; // Slower than player projectiles
+        const speed = 600; // Increased speed (doubled)
         const projX = pos.x + Math.cos(angle) * 20;
         const projY = pos.y + Math.sin(angle) * 20;
         

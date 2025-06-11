@@ -86,7 +86,7 @@ export class InputSystem {
     
     fireProjectile(world, shooter, angle) {
         const pos = shooter.getComponent('position');
-        const speed = 400;
+        const speed = 800;
         const projX = pos.x + Math.cos(angle) * 20;
         const projY = pos.y + Math.sin(angle) * 20;
         const isPlayer = shooter.hasComponent('player');
