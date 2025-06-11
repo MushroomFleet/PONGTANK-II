@@ -49,7 +49,7 @@ export class InputSystem {
         
         // Tank movement with reduced turning rate
         const MOVE_FORCE = 300;
-        const TURN_FORCE = 60; // Reduced from 180 to 60 degrees/second
+        const TURN_FORCE = 15; // Further reduced from 60 to 15 degrees/second (factor of 4)
         
         if (this.keys['KeyW']) {
             vel.vx += Math.cos(pos.rotation) * MOVE_FORCE * deltaTime / 1000;

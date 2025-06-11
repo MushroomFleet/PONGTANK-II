@@ -10,9 +10,9 @@ export class MazeGenerator {
         
         // Biome configuration
         this.biomes = {
-            SPARSE: { wallDensity: 0.15, brickDensity: 0.05 },    // Combat areas
-            MODERATE: { wallDensity: 0.25, brickDensity: 0.10 },  // Balanced zones
-            DENSE: { wallDensity: 0.35, brickDensity: 0.15 }      // Maze-like areas
+            SPARSE: { wallDensity: 0.15, brickDensity: 0.12 },    // Combat areas - increased destructible tiles
+            MODERATE: { wallDensity: 0.25, brickDensity: 0.20 },  // Balanced zones - increased destructible tiles
+            DENSE: { wallDensity: 0.35, brickDensity: 0.30 }      // Maze-like areas - increased destructible tiles
         };
         
         // Sector layout (3x3 grid)

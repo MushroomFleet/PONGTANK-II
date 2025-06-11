@@ -278,6 +278,12 @@ export class World {
             this.isWaveActive = false;
             this.lastWaveTime = Date.now();
             console.log(`Wave ${this.currentWave} completed!`);
+            
+            // Check if we need to regenerate the map every 5 waves
+            if (this.currentWave > 0 && this.currentWave % 5 === 0) {
+                console.log(`Regenerating map after wave ${this.currentWave}!`);
+                this.regenerateMaze();
+            }
         }
         
         if (!this.isWaveActive && Date.now() - this.lastWaveTime > this.waveDelay) {
@@ -389,6 +395,65 @@ export class World {
         }
         
         return edgePositions;
+    }
+    
+    regenerateMaze() {
+        // Store player position and stats
+        const playerPos = this.player ? this.player.getComponent('position') : null;
+        const playerHealth = this.player ? this.player.getComponent('health') : null;
+        const playerWeapon = this.player ? this.player.getComponent('weapon') : null;
+        
+        // Remove all existing walls and bricks
+        const wallsAndBricks = this.entities.filter(entity => 
+            entity.hasComponent('wall') || entity.hasComponent('brick')
+        );
+        
+        wallsAndBricks.forEach(entity => {
+            this.entities = this.entities.filter(e => e.id !== entity.id);
+        });
+        
+        // Generate new maze
+        const generator = new MazeGenerator(MAZE_WIDTH, MAZE_HEIGHT, TILE_SIZE);
+        this.maze = generator.generate();
+        
+        // Create new wall and brick entities
+        for (let y = 0; y < MAZE_HEIGHT; y++) {
+            for (let x = 0; x < MAZE_WIDTH; x++) {
+                const cellType = this.maze[y][x];
+                const worldX = x * TILE_SIZE + TILE_SIZE / 2;
+                const worldY = y * TILE_SIZE + TILE_SIZE / 2;
+                
+                if (cellType === 1) {
+                    this.createWall(worldX, worldY);
+                } else if (cellType === 2) {
+                    this.createBrick(worldX, worldY);
+                }
+            }
+        }
+        
+        // Update generator reference
+        this.mazeGenerator = generator;
+        
+        // Find a new spawn position for the player if current position is blocked
+        if (this.player && playerPos) {
+            const tileX = Math.floor(playerPos.x / TILE_SIZE);
+            const tileY = Math.floor(playerPos.y / TILE_SIZE);
+            
+            // Check if current position is still valid
+            if (tileX >= 0 && tileX < MAZE_WIDTH && tileY >= 0 && tileY < MAZE_HEIGHT) {
+                if (this.maze[tileY][tileX] !== 0) {
+                    // Current position is blocked, find new spawn position
+                    const spawnPositions = this.mazeGenerator.findSpawnPositions(1);
+                    if (spawnPositions.length > 0) {
+                        playerPos.x = spawnPositions[0].x;
+                        playerPos.y = spawnPositions[0].y;
+                        console.log('Player repositioned due to map regeneration');
+                    }
+                }
+            }
+        }
+        
+        console.log('Map regenerated with new layout!');
     }
 }
 

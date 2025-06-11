@@ -16,10 +16,12 @@ export class MovementSystem {
             pos.y += vel.vy * deltaTime / 1000;
             pos.rotation += vel.angular * deltaTime / 1000;
             
-            // Apply friction
-            vel.vx *= 0.95;
-            vel.vy *= 0.95;
-            vel.angular *= 0.95;
+            // Apply friction (but not to projectiles - they maintain constant speed)
+            if (!entity.hasComponent('projectile')) {
+                vel.vx *= 0.95;
+                vel.vy *= 0.95;
+                vel.angular *= 0.95;
+            }
             
             // Keep entities in bounds
             pos.x = Math.max(20, Math.min(CANVAS_WIDTH - 20, pos.x));
