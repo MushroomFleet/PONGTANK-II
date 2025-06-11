@@ -48,8 +48,8 @@ export class InputSystem {
         const playerComp = player.getComponent('player');
         
         // Tank movement with reduced turning rate
-        const MOVE_FORCE = 300;
-        const TURN_FORCE = 15; // Further reduced from 60 to 15 degrees/second (factor of 4)
+        const MOVE_FORCE = 150; // Reduced by half for more strategic movement
+        const TURN_FORCE = 7.5; // Halved again for very deliberate turning
         
         if (this.keys['KeyW']) {
             vel.vx += Math.cos(pos.rotation) * MOVE_FORCE * deltaTime / 1000;

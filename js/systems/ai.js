@@ -93,7 +93,7 @@ export class AISystem {
         // Random movement every 2 seconds
         if (ai.stateTimer > 2000) {
             const angle = Math.random() * Math.PI * 2;
-            const force = 30;
+            const force = 15; // Reduced by half for slower, more strategic movement
             
             vel.vx += Math.cos(angle) * force;
             vel.vy += Math.sin(angle) * force;
@@ -118,7 +118,7 @@ export class AISystem {
         const distance = Math.sqrt(dx * dx + dy * dy);
         
         if (distance > 0) {
-            const force = 80;
+            const force = 40; // Reduced by half for slower, more strategic movement
             vel.vx += (dx / distance) * force * deltaTime / 1000;
             vel.vy += (dy / distance) * force * deltaTime / 1000;
             

@@ -42,16 +42,16 @@ export class CollisionSystem {
             return;
         }
         
-        // Check bounds and apply bouncing
+        // Check bounds and apply Pong-style bouncing (no energy loss)
         let bounced = false;
         
         if (pos.x <= 0 || pos.x >= CANVAS_WIDTH) {
-            vel.vx *= -0.9;
+            vel.vx *= -1; // Perfect reflection, no energy loss
             bounced = true;
         }
         
         if (pos.y <= 0 || pos.y >= CANVAS_HEIGHT) {
-            vel.vy *= -0.9;
+            vel.vy *= -1; // Perfect reflection, no energy loss
             bounced = true;
         }
         
@@ -155,11 +155,11 @@ export class CollisionSystem {
         const dx = pos.x - wallPos.x;
         const dy = pos.y - wallPos.y;
         
-        // Determine which face of the wall was hit
+        // Determine which face of the wall was hit (Pong-style perfect reflection)
         if (Math.abs(dx) > Math.abs(dy)) {
-            vel.vx *= -0.9; // Horizontal bounce with energy loss
+            vel.vx *= -1; // Perfect horizontal bounce, no energy loss
         } else {
-            vel.vy *= -0.9; // Vertical bounce with energy loss
+            vel.vy *= -1; // Perfect vertical bounce, no energy loss
         }
     }
     
